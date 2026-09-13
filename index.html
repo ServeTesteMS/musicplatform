@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111114">
+  <title>MusicPlatform</title>
+  <style>
+    :root{
+      --bg:#0f0f12;--panel:#18181d;--panel2:#222228;--text:#fff;
+      --muted:#a5a5ad;--line:#303038;--accent:#1ed760;--danger:#ff5a67;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;display:grid;place-items:center;
+      background:radial-gradient(circle at top,#22222a 0,#111114 42%,#0b0b0d 100%);
+      color:var(--text);font-family:Arial,Helvetica,sans-serif;padding:22px;
+    }
+    .card{
+      width:min(470px,100%);background:rgba(24,24,29,.96);
+      border:1px solid var(--line);border-radius:22px;padding:32px;
+      box-shadow:0 24px 70px rgba(0,0,0,.42);text-align:center;
+    }
+    .logo{font-size:30px;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
+    .logo span{color:var(--accent)}
+    h1{font-size:23px;margin:24px 0 8px}
+    p{color:var(--muted);line-height:1.5;margin:0 0 22px}
+    .status{
+      display:flex;align-items:center;justify-content:center;gap:9px;
+      margin:18px 0 22px;color:var(--muted);font-size:14px
+    }
+    .dot{width:10px;height:10px;border-radius:50%;background:#777}
+    .dot.ready{background:var(--accent);box-shadow:0 0 12px rgba(30,215,96,.5)}
+    .dot.error{background:var(--danger)}
+    .btn{
+      display:block;width:100%;padding:15px 18px;border:0;border-radius:12px;
+      background:var(--accent);color:#08120b;font-size:16px;font-weight:800;
+      cursor:pointer;text-decoration:none;transition:.15s;
+    }
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
+    .btn.disabled{pointer-events:none;opacity:.45}
+    .small{font-size:12px;color:#75757e;margin-top:18px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">Music<span>Platform</span></div>
+    <p>Seu acesso oficial ao MusicPlatform.</p>
+
+    <h1>Entrar no MusicPlatform</h1>
+    <div class="status">
+      <span id="dot" class="dot"></span>
+      <span id="statusText">Procurando servidor...</span>
+    </div>
+
+    <a id="enterBtn" class="btn disabled" href="#" rel="noopener">Entrar</a>
+
+    <div class="small">O endereço do servidor é atualizado automaticamente pelo PC principal.</div>
+  </main>
+
+<script>
+(async function(){
+  const btn=document.getElementById('enterBtn');
+  const dot=document.getElementById('dot');
+  const text=document.getElementById('statusText');
+
+  try{
+    const r=await fetch('./server.json?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('server.json indisponível');
+    const data=await r.json();
+    const url=String(data.url||'').trim();
+
+    if(!/^https:\/\/[a-z0-9.-]+(?:\/.*)?$/i.test(url)){
+      throw new Error('endereço inválido');
+    }
+
+    btn.href=url;
+    btn.classList.remove('disabled');
+    dot.classList.add('ready');
+    text.textContent='Servidor disponível';
+  }catch(e){
+    dot.classList.add('error');
+    text.textContent='Servidor temporariamente indisponível';
+    btn.textContent='Tente novamente mais tarde';
+  }
+})();
+</script>
+</body>
+</html>
