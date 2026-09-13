@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111114">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'">
   <title>MusicPlatform</title>
   <style>
     :root{
@@ -70,7 +71,7 @@
     const data=await r.json();
     const url=String(data.url||'').trim();
 
-    if(!/^https:\/\/[a-z0-9.-]+(?:\/.*)?$/i.test(url)){
+    if(!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com\/?$/i.test(url)){
       throw new Error('endereço inválido');
     }
 
