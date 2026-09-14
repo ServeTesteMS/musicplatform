@@ -82,7 +82,13 @@
       throw new Error('endereço inválido');
     }
 
-    btn.href=url;
+    const target=new URL(url);
+    const incoming=new URLSearchParams(window.location.search);
+    for(const key of ['music','artist','playlist']){
+      const value=String(incoming.get(key)||'').trim();
+      if(value && /^[A-Za-z0-9_-]{3,100}$/.test(value)) target.searchParams.set(key,value);
+    }
+    btn.href=target.toString();
     btn.classList.remove('disabled');
     dot.classList.add('ready');
     text.textContent='Servidor disponível';
