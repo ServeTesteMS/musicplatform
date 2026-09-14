@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111114">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'">
   <title>MusicPlatform</title>
   <style>
     :root{
@@ -64,30 +64,76 @@
   const btn=document.getElementById('enterBtn');
   const dot=document.getElementById('dot');
   const text=document.getElementById('statusText');
+  const stamp=Date.now();
+
+  function validData(data){
+    const url=String(data?.url||'').trim();
+    if(!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com\/?$/i.test(url)) return null;
+    const when=Date.parse(String(data?.updatedAt||''))||0;
+    return {url,updatedAt:when};
+  }
+
+  async function fromGitHubApi(){
+    const r=await fetch(
+      'https://api.github.com/repos/servetestems/musicplatform/contents/server.json?ref=main&ts='+stamp,
+      {cache:'no-store',headers:{'Accept':'application/vnd.github+json'}}
+    );
+    if(!r.ok) throw new Error('GitHub API indisponível');
+    const meta=await r.json();
+    const raw=atob(String(meta.content||'').replace(/\s/g,''));
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    const data=JSON.parse(new TextDecoder().decode(bytes));
+    const result=validData(data);
+    if(!result) throw new Error('GitHub API retornou endereço inválido');
+    return result;
+  }
+
+  async function fromRaw(){
+    const r=await fetch(
+      'https://raw.githubusercontent.com/servetestems/musicplatform/main/server.json?ts='+stamp,
+      {cache:'no-store'}
+    );
+    if(!r.ok) throw new Error('raw indisponível');
+    const result=validData(await r.json());
+    if(!result) throw new Error('raw retornou endereço inválido');
+    return result;
+  }
+
+  async function fromPages(){
+    const r=await fetch('./server.json?ts='+stamp,{cache:'no-store'});
+    if(!r.ok) throw new Error('server.json local indisponível');
+    const result=validData(await r.json());
+    if(!result) throw new Error('server.json local inválido');
+    return result;
+  }
 
   try{
-    const stamp=Date.now();
-    let r;
-    try{
-      r=await fetch('https://raw.githubusercontent.com/servetestems/musicplatform/main/server.json?ts='+stamp,{cache:'no-store'});
-      if(!r.ok) throw new Error('raw indisponível');
-    }catch(_){
-      r=await fetch('./server.json?ts='+stamp,{cache:'no-store'});
-      if(!r.ok) throw new Error('server.json indisponível');
-    }
-    const data=await r.json();
-    const url=String(data.url||'').trim();
+    // Consulta as 3 fontes e usa a atualização mais recente.
+    // A API do GitHub normalmente enxerga o commit novo antes do Raw/Pages.
+    const attempts=await Promise.allSettled([
+      fromGitHubApi(),
+      fromRaw(),
+      fromPages()
+    ]);
 
-    if(!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com\/?$/i.test(url)){
-      throw new Error('endereço inválido');
-    }
+    const options=attempts
+      .filter(x=>x.status==='fulfilled')
+      .map(x=>x.value)
+      .sort((a,b)=>b.updatedAt-a.updatedAt);
 
-    const target=new URL(url);
+    if(!options.length) throw new Error('Nenhuma fonte disponível');
+
+    const latest=options[0];
+    const target=new URL(latest.url);
     const incoming=new URLSearchParams(window.location.search);
+
     for(const key of ['music','artist','playlist']){
       const value=String(incoming.get(key)||'').trim();
-      if(value && /^[A-Za-z0-9_-]{3,100}$/.test(value)) target.searchParams.set(key,value);
+      if(value && /^[A-Za-z0-9_-]{3,100}$/.test(value)){
+        target.searchParams.set(key,value);
+      }
     }
+
     btn.href=target.toString();
     btn.classList.remove('disabled');
     dot.classList.add('ready');
